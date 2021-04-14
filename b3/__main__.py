@@ -23,10 +23,19 @@ _CACHE_DIR = Path(__file__).parent.parent / ".cache"
 _ROOT_URL = "https://raw.githubusercontent.com/openscriptures/morphhb/master/wlc"
 
 
-@click.command()
+@click.group()
+def cli():
+    """
+    Main click group.
+    """
+
+
+@cli.command("populate-db")
 @click.option("--limit", default=31, help="Limit number of records uploaded to dynamodb.")
-def run(limit):
-    """Parse openscriptures xml-files and make my own json ones."""
+def populate_db(limit):
+    """
+    Parse openscriptures xml-files and make my own json ones, then upload to dynamodb.
+    """
     uploaded = 0
     for book_id in _BOOK_IDS:
         logging.info(f"Working on {book_id}")
@@ -135,5 +144,4 @@ def _parse_osis_id(ref):
     return {"chapter_osis_id": cid, "verse": int(vnum)}
 
 
-if __name__ == '__main__':
-    run()  # pylint: disable=no-value-for-parameter
+cli()  # pylint: disable=no-value-for-parameter
