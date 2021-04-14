@@ -7,4 +7,5 @@
 6. Populate english text - needs fetching from somewhere...ideally that open source one
 7. Populate strongs definitions (store in separate table initially)
 8. Create modals
-9. Call it a day!
+9. Bring lambda api code into codebase (and possibly autodeploy...)
+10. Call it a day!
