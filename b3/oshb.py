@@ -4,22 +4,17 @@ Code to parse Openscriptures Hebrew Bible xml format.
 from itertools import zip_longest
 import json
 import re
-import xml.etree.ElementTree as ET
+
+from .utils import parse_xml
 
 
 def parse_oshb_xml(path, use_kjv_versification=True):
     """
     Parse the OSHB xml file into a list of json-ified verses.
     """
-    tree = _parse_xml(path)
+    tree = parse_xml(path)
     tokens = list(_tokenize(tree, use_kjv_versification))
     return list(_group_tokens(tokens))
-
-
-def _parse_xml(path):
-    with path.open("r") as f:
-        xmlstring = re.sub(' xmlns="[^"]+"', '', f.read(), count=1)
-    return ET.fromstring(xmlstring)
 
 
 def _tokenize(tree, use_kjv_versification):
@@ -66,7 +61,7 @@ def _group_tokens(tokens):
     prev_vid = None
     buffer = []
     for x in tokens:
-        vid = {"chapter_osis_id": x.pop("chapter_osis_id"), "verse": x.pop("verse")}
+        vid = {"chapterId": x.pop("chapterId"), "verseNum": x.pop("verseNum")}
         if prev_vid and prev_vid != vid:
             yield {**prev_vid, **{"tokens": buffer}}
             buffer = []
@@ -77,4 +72,4 @@ def _group_tokens(tokens):
 
 def _parse_osis_id(ref):
     cid, vnum = ref.rsplit('.', 1)
-    return {"chapter_osis_id": cid, "verse": int(vnum)}
+    return {"chapterId": "WLC:" + cid, "verseNum": int(vnum)}
