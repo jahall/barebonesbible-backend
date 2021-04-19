@@ -249,17 +249,14 @@ class Hebrew(object):
                 yield token, space
 
     def transliterate(self, phrase, reverse=False):
-        """Transliterate to english."""
+        """
+        Transliterate to english.
+        """
         tlit = ''.join([self._tlit(clump) for clump in self._iter_clumps(phrase)])
         for seq, sub in self._TRANSLIT_SUBS:
             tlit = re.sub(seq, sub, tlit)
         tlit = ' '.join(tlit.split()[::-1]) if reverse else tlit
         return tlit.lower()   # <- lower looks a bit nicer
-
-    def sort_niqqud(self, phrase):
-        """Ensure chars with multiple-niqqud have them in a consistent order."""
-        phrase = ''.join(''.join(sorted(clump, reverse=True)) for clump in self._iter_clumps(phrase))
-        return phrase.replace(self._NIQQUD['dagesh'], '')  # Dagesh doesn't alter the meaning
 
     def _tlit(self, clump):
         tlit = None
@@ -273,16 +270,35 @@ class Hebrew(object):
         return clump if tlit is None else tlit
 
     def _iter_clumps(self, phrase):
+        """
+        Iterate over "clumps" of unicode chars, where each clump contains a letter and all
+        the associated accents i.e. niqqud and cantillations.
+        """
         if phrase:
             clump = phrase[0]
             ignore = {self._NIQQUD[i] for i in ["meteg", "rafe", "upper-dot", "lower-dot"]}
             accents = set(self._CANTILLATIONS.values()) | set(self._NIQQUD.values())
-            for i, c in enumerate(phrase[1:]):
+            for c in phrase[1:]:
                 if c in ignore:
                     continue
                 if c in accents:
                     clump += c
                 else:
-                    yield clump
+                    yield self._sort_clump(clump)
                     clump = c
-            yield clump
+            yield self._sort_clump(clump)
+
+    def _sort_clump(self, clump):
+        """
+        Ensure accents appear in consistent order.
+        """
+
+        def key(char):
+            if char in {self._MAP["shin-dot"], self._MAP["sin-dot"]}:
+                return 0
+            elif char in {self._MAP["dagesh"]}:
+                return 1
+            else:
+                return 2
+
+        return clump[0] + "".join(sorted(clump[1:], key=key))
