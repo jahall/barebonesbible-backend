@@ -4,34 +4,33 @@ from pathlib import Path
 import re
 import sys
 
-import boto3
 import requests
 
 from .utils import parse_xml
 
 
-_CACHE_DIR = Path(__file__).parent.parent / ".cache"
+_CACHE_DIR = Path(__file__).parent.parent / ".cache" / "b3-en-raw"
 _ROOT_URL = "https://raw.githubusercontent.com/gratis-bible/bible/master/en"
 
+# USFX and OSIS are common open standards, see diffs here: https://ebible.org/usfx/#differences
+# This contains good stuff: https://ebible.org/Scriptures/engwebp_usfx.zip
 
-def populate_english(translation, limit):
+
+def fetch_english(translation, limit):
     """
     Parse openscriptures xml-files and make my own json ones, then upload to dynamodb.
     """
     translation = translation.lower()
     logging.info(f"Downloading {translation}.xml")
     _download_file(translation)
-    records = _parse_file(translation)
+    records = _parse_file(translation, limit)
     logging.info(f"Parsed {len(records)} verses")
-    records = records[:limit]
-    logging.info(f"Uploading {len(records)} records")
-    _upload(records)
+    return records
 
 
 def _download_file(translation):
-    dir_ = _CACHE_DIR / "b3-en-raw"
-    dir_.mkdir(parents=True, exist_ok=True)
-    path = dir_ / f"{translation}.xml"
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = _CACHE_DIR / f"{translation}.xml"
     if not path.exists():
         url = f"{_ROOT_URL}/{translation}.xml"
         logging.info(f"Requesting {url}")
@@ -40,8 +39,8 @@ def _download_file(translation):
             f.write(r.content)
 
 
-def _parse_file(translation):
-    path = _CACHE_DIR / "b3-en-raw" / f"{translation}.xml"
+def _parse_file(translation, limit):
+    path = _CACHE_DIR / f"{translation}.xml"
     logging.info(f"Parsing {path}")
     tree = parse_xml(path)
     records = []
@@ -62,12 +61,7 @@ def _parse_file(translation):
         if book != prev_book:
             logging.info(f"Parsing {book}")
             prev_book = book
+        if len(records) == limit:
+            logging.warning(f"Reached limit of {limit} - stopping!")
+            break
     return records
-
-
-def _upload(records):
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table('B3Bibles')
-    with table.batch_writer() as batch:
-        for record in records:
-            batch.put_item(Item=record)

@@ -3,8 +3,9 @@ import sys
 
 import click
 
-from b3.english import populate_english
-from b3.hebrew import populate_hebrew
+from b3.db import upload
+from b3.english import fetch_english
+from b3.hebrew import fetch_hebrew
 
 
 fmt = "%(asctime)s : %(levelname)s : %(message)s"
@@ -25,7 +26,8 @@ def run_populate_english(translation, limit):
     """
     Parse openscriptures xml-files and make my own json ones, then upload to dynamodb.
     """
-    populate_english(translation, limit)
+    records = fetch_english(translation, limit)
+    upload(records, table="B3Bibles")
 
 
 @cli.command("populate-hebrew")
@@ -34,7 +36,8 @@ def run_populate_hebrew(limit):
     """
     Parse openscriptures xml-files and make my own json ones, then upload to dynamodb.
     """
-    populate_hebrew(limit)
+    records = fetch_hebrew(limit)
+    upload(records, table="B3Bibles")
 
 
 cli()  # pylint: disable=no-value-for-parameter

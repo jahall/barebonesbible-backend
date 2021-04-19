@@ -4,6 +4,7 @@ Code to parse Openscriptures Hebrew Bible xml format.
 from itertools import zip_longest
 import json
 import re
+import unicodedata
 
 from .utils import parse_xml
 
@@ -36,6 +37,7 @@ def _tokenize(tree, use_kjv_versification):
                     yield {**root, **{"text": " ", "type": "space"}}  # add whitespace
                 for code, text in zip_longest(elem.attrib["lemma"].split("/"), elem.text.split("/")):
                     code = code.split()[0] if code else ""
+                    text = unicodedata.normalize("NFD", text)  # ensure chars and accents are separated
                     if code.isdigit():
                         yield {**root, **{"text": text, "type": "word", "code": "H" + code}}
                     else:

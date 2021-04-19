@@ -4,10 +4,10 @@ from pathlib import Path
 import re
 import sys
 
-import boto3
 import requests
 
-from b3.oshb import parse_oshb_xml
+from .oshb import parse_oshb_xml
+from .translit import Hebrew
 
 
 _BOOK_IDS = [
@@ -15,30 +15,41 @@ _BOOK_IDS = [
     'Isa', 'Jer', 'Ezek', 'Hos', 'Joel', 'Amos', 'Obad', 'Jonah', 'Mic', 'Nah', 'Hab', 'Zeph', 'Hag', 'Zech', 'Mal',
     'Ps', 'Prov', 'Job', 'Song', 'Ruth', 'Lam', 'Eccl', 'Esth', 'Dan', 'Ezra', 'Neh', '1Chr', '2Chr',
 ]
-_CACHE_DIR = Path(__file__).parent.parent / ".cache"
+_CACHE_DIR = Path(__file__).parent.parent / ".cache" / "b3-heb-raw"
 _ROOT_URL = "https://raw.githubusercontent.com/openscriptures/morphhb/master/wlc"
+_HEB = Hebrew()
 
 
-def populate_hebrew(limit):
+def fetch_hebrew(limit):
     """
     Parse openscriptures xml-files and make my own json ones, then upload to dynamodb.
     """
-    uploaded = 0
+    records = []
     for book_id in _BOOK_IDS:
         logging.info(f"Working on {book_id}")
         _download_file(book_id)
-        _parse_file(book_id)
-        uploaded = _upload(book_id, uploaded, limit)
-        logging.info(f"Uploaded {uploaded} records")
-        if uploaded >= limit:
+        records.extend(_parse_file(book_id))
+        if len(records) >= limit:
             logging.warning(f"Reached limit of {limit} - stopping!")
+            records = records[:limit]
             break
+    for record in records:
+        tokens = record["tokens"]
+        for token, next_token in zip(tokens, tokens[1:] + [{"type": "space"}]):
+            w = _HEB.strip_cantillations(token["text"])
+            token["text_no_cantillations"] = w
+            if next_token["type"] == "suffix":
+                w = w + next_token["text"]
+            if token["type"] == "suffix":
+                token["transliteration"] = ""
+            else:
+                token["transliteration"] = _HEB.transliterate(w) 
+    return records
 
 
 def _download_file(book_id):
-    dir_ = _CACHE_DIR / "b3-heb-raw"
-    dir_.mkdir(parents=True, exist_ok=True)
-    path = dir_ / f"{book_id}.xml"
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = _CACHE_DIR / f"{book_id}.xml"
     if not path.exists():
         url = f"{_ROOT_URL}/{book_id}.xml"
         logging.info(f"Requesting {url}")
@@ -48,26 +59,5 @@ def _download_file(book_id):
 
 
 def _parse_file(book_id):
-    path = _CACHE_DIR / "b3-heb-raw" / f"{book_id}.xml"
-    parsed = parse_oshb_xml(path)
-    dir_ = _CACHE_DIR / "b3-heb"
-    dir_.mkdir(parents=True, exist_ok=True)
-    path = dir_ / f"{book_id}.json"
-    with path.open("w", encoding="utf8") as f:
-        json.dump(parsed, f)
-
-
-def _upload(book_id, uploaded, limit):
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table('B3Bibles')
-    path = _CACHE_DIR / "b3-heb" / f"{book_id}.json"
-    with table.batch_writer() as batch:
-        with path.open("r", encoding="utf8") as f:
-            records = json.load(f)
-        logging.info(f"Uploading {len(records)} from {path.name}")
-        for record in records:
-            batch.put_item(Item=record)
-            uploaded += 1
-            if uploaded >= limit:
-                break
-    return uploaded
+    path = _CACHE_DIR / f"{book_id}.xml"
+    return parse_oshb_xml(path)
