@@ -1,5 +1,9 @@
+from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
+
+
+_CACHE_DIR = Path(__file__).parent.parent / ".cache"
 
 
 def parse_xml(path):
@@ -11,5 +15,12 @@ def parse_xml(path):
     return ET.fromstring(xmlstring)
 
 
-def cache():
-    pass
+def get_cache_path(*args):
+    """
+    Get a specific cache path, and ensure the directory exists.
+    """
+    path = _CACHE_DIR
+    for arg in args:
+        path = path / arg
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
