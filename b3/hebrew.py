@@ -29,16 +29,7 @@ def fetch_hebrew():
         path = _download_file(book_id)
         records.extend(_parse_oshb_xml(path))
     logging.info("Performing transliteration")
-    for record in records:
-        tokens = record["tokens"]
-        for token, next_token in zip(tokens, tokens[1:] + [{"type": "space"}]):
-            w = _HEB.strip_cantillations(token["text"])
-            if next_token["type"] == "suffix":
-                w = w + next_token["text"]
-            if token["type"] == "suffix":
-                token["transliteration"] = ""
-            else:
-                token["transliteration"] = _HEB.transliterate(w) 
+    _transliterate(records)
     return records
 
 
@@ -78,14 +69,14 @@ def _tokenize(tree, use_kjv_versification):
                 root = _parse_osis_id(elem.text.replace("KJV:", "").strip("!abcd"))
             elif elem.tag == "w":
                 if not is_first:
-                    yield {**root, **{"text": " ", "type": "space"}}  # add whitespace
+                    yield {**root, **{"text": " ", "type": "s"}}  # add whitespace
                 for code, text in zip_longest(elem.attrib["lemma"].split("/"), elem.text.split("/")):
                     code = code.split()[0] if code else ""
                     text = unicodedata.normalize("NFD", text or "")  # ensure chars and accents are separated
                     if code.isdigit():
-                        yield {**root, **{"text": text, "type": "word", "code": "H" + code}}
+                        yield {**root, **{"text": text, "type": "w", "code": "H" + code}}
                     else:
-                        yield {**root, **{"text": text, "type": "prefix" if code else "suffix"}}
+                        yield {**root, **{"text": text, "type": "pre" if code else "suf"}}
                 is_first = False
             elif elem.tag == 'seg':
                 # TODO: handle these spaces!!
@@ -119,3 +110,16 @@ def _group_tokens(tokens):
 def _parse_osis_id(ref):
     cid, vnum = ref.rsplit('.', 1)
     return {"chapterId": cid, "verseNum": int(vnum)}
+
+
+def _transliterate(records):
+    for record in records:
+        tokens = record["tokens"]
+        for token, next_token in zip(tokens, tokens[1:] + [{"type": "space"}]):
+            w = _HEB.strip_cantillations(token["text"])
+            if next_token["type"] == "suffix":
+                w = w + next_token["text"]
+            if token["type"] == "suffix":
+                token["tlit"] = ""
+            else:
+                token["tlit"] = _HEB.transliterate(w)

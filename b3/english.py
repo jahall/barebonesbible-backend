@@ -51,7 +51,7 @@ def _parse_file(translation, path):
             "tokens": [
                 {
                     "text": w,
-                    "type": "word" if w.strip() else "space",
+                    "type": "w" if w.strip() else "s",
                 }
                 for w in re.split(r"(\s+)", verse.text.replace("`", "'").strip())
             ],
