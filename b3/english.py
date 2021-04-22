@@ -17,7 +17,7 @@ _ROOT_URL = "https://raw.githubusercontent.com/gratis-bible/bible/master/en"
 
 def fetch_english(translation):
     """
-    Parse openscriptures xml-files and make my own json ones, then upload to dynamodb.
+    Fetch and parse openscriptures xml-files.
     """
     translation = translation.lower()
     logging.info(f"Downloading {translation}.xml")

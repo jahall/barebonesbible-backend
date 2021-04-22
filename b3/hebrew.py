@@ -49,7 +49,7 @@ def _parse_oshb_xml(path, use_kjv_versification=True):
     Parse the OSHB xml file into a list of json-ified verses.
     """
     tree = parse_xml(path)
-    tokens = list(_tokenize(tree, use_kjv_versification))
+    tokens = _tokenize(tree, use_kjv_versification)
     return list(_group_tokens(tokens))
 
 
@@ -61,34 +61,42 @@ def _tokenize(tree, use_kjv_versification):
     - token: the token
     - strongs: (optional) strongs reference
     """
+    tokens = []
     for verse in tree.findall("*/div/chapter/verse"):
         root = _parse_osis_id(verse.attrib["osisID"])
-        is_first = True
         for elem in verse.findall('*'):
             if use_kjv_versification and elem.tag == "note" and (elem.text or "").startswith("KJV:"):
                 root = _parse_osis_id(elem.text.replace("KJV:", "").strip("!abcd"))
             elif elem.tag == "w":
-                if not is_first:
-                    yield {**root, **{"text": " ", "type": "s"}}  # add whitespace
                 for code, text in zip_longest(elem.attrib["lemma"].split("/"), elem.text.split("/")):
                     code = code.split()[0] if code else ""
                     text = unicodedata.normalize("NFD", text or "")  # ensure chars and accents are separated
                     if code.isdigit():
-                        yield {**root, **{"text": text, "type": "w", "code": "H" + code}}
+                        tokens.append({**root, **{"text": text, "type": "w", "strongs": ["H" + code]}})
                     else:
-                        yield {**root, **{"text": text, "type": "pre" if code else "suf"}}
-                is_first = False
+                        tokens.append({**root, **{"text": text, "type": "pre" if code else "suf"}})
             elif elem.tag == 'seg':
                 # TODO: handle these spaces!!
                 seg = {
                     'x-maqqef': '\u05BE',
-                    'x-paseq': ' \u05C0 ',
-                    'x-pe': ' (\u05E4) ',
-                    'x-reversednun': ' (\u05C6) ',  # <- Appears in some Psalms
-                    'x-samekh': ' (\u05E1) ',
-                    'x-sof-pasuq': '\u05C3 ',
+                    'x-paseq': '\u05C0',
+                    'x-pe': '(\u05E4)',
+                    'x-reversednun': '(\u05C6)',  # <- Appears in some Psalms
+                    'x-samekh': '(\u05E1)',
+                    'x-sof-pasuq': '\u05C3',
                 }[elem.attrib['type']]
-                yield {**root, **{"text": seg, "type": "punc"}}
+                if tokens[-1]["type"] == "punc":
+                    tokens[-1]["text"] += seg
+                else:
+                    tokens.append({**root, **{"text": seg, "type": "punc"}})
+            if elem.tail:
+                tail = elem.tail.replace("\n", " ")
+                tail = re.sub(r"\s+", " ", tail)
+                if tokens[-1]["type"] == "punc":
+                    tokens[-1]["text"] += tail
+                else:
+                    tokens.append({**root, **{"text": tail, "type": "punc"}})
+    return tokens
 
 
 def _group_tokens(tokens):
@@ -115,11 +123,11 @@ def _parse_osis_id(ref):
 def _transliterate(records):
     for record in records:
         tokens = record["tokens"]
-        for token, next_token in zip(tokens, tokens[1:] + [{"type": "space"}]):
+        for token, next_token in zip(tokens, tokens[1:] + [{"type": "punc"}]):
             w = _HEB.strip_cantillations(token["text"])
-            if next_token["type"] == "suffix":
+            if next_token["type"] == "suf":
                 w = w + next_token["text"]
-            if token["type"] == "suffix":
+            if token["type"] == "suf":
                 token["tlit"] = ""
             else:
                 token["tlit"] = _HEB.transliterate(w)

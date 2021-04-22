@@ -7,6 +7,7 @@ import click
 
 from b3.db import upload
 from b3.english import fetch_english
+from b3.english_annotated import fetch_english_annotated
 from b3.hebrew import fetch_hebrew
 from b3.utils import get_cache_path
 
@@ -21,32 +22,18 @@ def cli():
     Main click group.
     """
 
-
-@cli.command("gather-kjv")
-def gather_kjv():
+@cli.command("stage")
+@click.argument("translation")
+def stage(translation):
     """
     Parse USFX file from ebibles.com.
     """
-    records = fetch_english("kjv")
-    _save_to_staging(records, "kjv")
-
-
-@cli.command("gather-web")
-def gather_web():
-    """
-    Parse USFX file from ebibles.com.
-    """
-    records = fetch_english("web")
-    _save_to_staging(records, "web")
-
-
-@cli.command("gather-wlc")
-def gather_wlc():
-    """
-    Parse openscriptures xml-files.
-    """
-    records = fetch_hebrew()
-    _save_to_staging(records, "wlc")
+    translation = translation.lower()
+    if translation == "wlc":
+        records = fetch_hebrew()
+    else:
+        records = fetch_english_annotated(translation)
+    _save_to_staging(records, translation)
 
 
 @cli.command("upload")
@@ -56,7 +43,7 @@ def run_upload(limit):
     Upload staged results to dynamodb.
     """
     records = {}
-    for version in ["kjv", "web", "wlc", "gnt", "lxx"]:
+    for version in ["kjv", "web", "wmb", "wlc", "gnt", "lxx"]:
         logging.info(f"Loading {version.upper()} from staging")
         path = get_cache_path("staging", f"{version}.json")
         if not path.exists():
