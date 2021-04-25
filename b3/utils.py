@@ -1,18 +1,7 @@
 from pathlib import Path
-import re
-import xml.etree.ElementTree as ET
 
 
 _CACHE_DIR = Path(__file__).parent.parent / ".cache"
-
-
-def parse_xml(path):
-    """
-    Parse OSIS XML.
-    """
-    with path.open("r", encoding="utf8") as f:
-        xmlstring = re.sub(r" xmlns=['\"][^'\"]+['\"]", "", f.read(), count=1)
-    return ET.fromstring(xmlstring)
 
 
 def get_cache_path(*args):

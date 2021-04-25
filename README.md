@@ -11,12 +11,13 @@ Do the following:
 4. Set environment variables for `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_DEFAULT_REGION` - for access to DynamoDB
 5. Run the following:
 ```python
-python b3 stage kjv
-python b3 stage web
-python b3 stage wmb
-python b3 stage wlc
-#python b3 stage gnt
-#python b3 stage lxx
+python b3 stage enasv
+python b3 stage enkjv
+python b3 stage enweb
+python b3 stage enwmb
+python b3 stage hewlc
+python b3 stage grtisch
+#python b3 stage grlxx
 ```
 6. Upload to dynamo db using:
 ```python

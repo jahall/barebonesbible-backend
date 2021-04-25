@@ -6,9 +6,8 @@ import sys
 import click
 
 from b3.db import upload
-from b3.english import fetch_english
-from b3.english_annotated import fetch_english_annotated
-from b3.hebrew import fetch_hebrew
+from b3.ebible import fetch_translation_from_ebible
+from b3.openscriptures import fetch_translation_from_openscriptures
 from b3.utils import get_cache_path
 
 
@@ -29,21 +28,21 @@ def stage(translation):
     Parse USFX file from ebibles.com.
     """
     translation = translation.lower()
-    if translation == "wlc":
-        records = fetch_hebrew()
+    if translation in {"hewlc", "grtisch"}:
+        records = fetch_translation_from_openscriptures(translation)
     else:
-        records = fetch_english_annotated(translation)
+        records = fetch_translation_from_ebible(translation)
     _save_to_staging(records, translation)
 
 
 @cli.command("upload")
-@click.option("--limit", default=31, help="Limit number of records uploaded to dynamodb.")
-def run_upload(limit):
+@click.option("--chapters", default="Gen.1,Gen.2,Ps.1,Matt.1,Matt.2", help="Limit number of records uploaded to dynamodb.")
+def run_upload(chapters):
     """
     Upload staged results to dynamodb.
     """
     records = {}
-    for version in ["kjv", "web", "wmb", "wlc", "gnt", "lxx"]:
+    for version in ["enasv", "enkjv", "enweb", "enwmb", "hewlc", "grtisch"]:
         logging.info(f"Loading {version.upper()} from staging")
         path = get_cache_path("staging", f"{version}.json")
         if not path.exists():
@@ -57,9 +56,10 @@ def run_upload(limit):
                 records[key][f"{version}Tokens"] = r["tokens"]
     records = list(records.values())
     logging.info(f"Uploading {len(records)} records to dynamodb")
-    if len(records) > limit:
-        logging.warning(f"Limiting to {limit} for upload")
-        records = records[:limit]
+    if chapters or chapters.lower() != "all":
+        logging.warning(f"Limiting to {chapters} for upload")
+        chapters = set(chapters.split(","))
+        records = [r for r in records if r["chapterId"] in chapters]
     upload(records, table="B3Bibles")
     logging.info(f"Done")
 
