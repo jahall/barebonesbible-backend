@@ -36,8 +36,8 @@ def stage(translation):
 
 
 @cli.command("upload")
-@click.option("--chapters", default="Gen.1,Gen.2,Ps.1,Matt.1,Matt.2", help="Limit number of records uploaded to dynamodb.")
-def run_upload(chapters):
+@click.option("--filt", default="Gen.1,Gen.2,Ps.1,Matt.1,Matt.2", help="Limit number of records uploaded to dynamodb.")
+def run_upload(filt):
     """
     Upload staged results to dynamodb.
     """
@@ -52,14 +52,22 @@ def run_upload(chapters):
             for r in json.load(f):
                 key = r["chapterId"], r["verseNum"]
                 if key not in records:
-                    records[key] = {"chapterId": r["chapterId"], "verseNum": r["verseNum"]}
-                records[key][f"{version}Tokens"] = r["tokens"]
+                    records[key] = {
+                        "chapterId": r["chapterId"],
+                        "verseNum": r["verseNum"],
+                        "translations": [],
+                    }
+                records[key][f"translations"].append({
+                    "translation": version[2:].upper(),
+                    "lan": version[:2],
+                    "tokens": r["tokens"],
+                })
     records = list(records.values())
     logging.info(f"Uploading {len(records)} records to dynamodb")
-    if chapters or chapters.lower() != "all":
-        logging.warning(f"Limiting to {chapters} for upload")
-        chapters = set(chapters.split(","))
-        records = [r for r in records if r["chapterId"] in chapters]
+    if filt or filt.lower() != "all":
+        logging.warning(f"Limiting to {filt} for upload")
+        filt = set(filt.split(","))
+        records = [r for r in records if r["chapterId"] in filt or r["chapterId"].split(".")[0] in filt]
     upload(records, table="B3Bibles")
     logging.info(f"Done")
 
