@@ -22,17 +22,20 @@ def cli():
     """
 
 @cli.command("stage")
-@click.argument("translation")
-def stage(translation):
+@click.argument("translations")
+def stage(translations):
     """
     Parse USFX file from ebibles.com.
     """
-    translation = translation.lower()
-    if translation in {"hewlc", "grtisch"}:
-        records = fetch_translation_from_openscriptures(translation)
-    else:
-        records = fetch_translation_from_ebible(translation)
-    _save_to_staging(records, translation)
+    translations = translations.lower().split(",")
+    for tr in translations:
+        logging.info(f"STAGING {tr.upper()}")
+        if tr in {"hewlc", "grtisch"}:
+            records = fetch_translation_from_openscriptures(tr)
+        else:
+            records = fetch_translation_from_ebible(tr)
+        _save_to_staging(records, tr)
+    logging.info(f"Done")
 
 
 @cli.command("upload")
@@ -77,7 +80,6 @@ def _save_to_staging(records, version):
     logging.info(f"Saving {len(records)} to {path}")
     with path.open("w", encoding="utf8") as f:
         json.dump(records, f)
-    logging.info(f"Done")
 
 
 cli()  # pylint: disable=no-value-for-parameter

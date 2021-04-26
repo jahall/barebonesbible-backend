@@ -12,6 +12,7 @@ def parse_usfx(path):
         xmlstr = f.read()
         xmlstr = re.sub(r" xmlns=['\"][^'\"]+['\"]", "", xmlstr, count=1)
         xmlstr = re.sub(r"</?wj>", "", xmlstr)
+        xmlstr = re.sub(r"</?nd>", "", xmlstr)
     tree = ET.fromstring(xmlstr)
     token_iter = _iter_tokens(tree)
     grouper = itertools.groupby(token_iter, key=lambda x: x[0])
@@ -45,7 +46,7 @@ def _iter_tokens(tree):
             yield vid, token
         if vid and e.tag in {"p", "q", "qs"} and e.text:
             yield vid, {"type": "o", "text": e.text.replace("\n", " ")}
-        if vid and e.tag in {"w", "f"} and e.tail:
+        if vid and e.tag in {"v", "w", "f"} and e.tail:
             yield vid, {"type": "o", "text": e.tail.replace("\n", " ")}
             
             
