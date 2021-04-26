@@ -8,7 +8,7 @@ import zipfile
 import requests
 
 from .parser.usfx import parse_usfx
-from .utils import get_cache_path
+from .utils import download, get_cache_path
 
 
 _ROOT_URL = "https://ebible.org/Scriptures"
@@ -48,14 +48,11 @@ def fetch_translation_from_ebible(translation):
 
 
 def _download_file(translation, filename):
+    zipurl = f"{_ROOT_URL}/{filename}.zip"
     zippath = get_cache_path("raw", translation, f"{filename}.zip")
-    if not zippath.exists():
-        url = f"{_ROOT_URL}/{filename}.zip"
-        logging.info(f"Requesting {url}")
-        r = requests.get(url)
-        with zippath.open("wb") as f:
-            f.write(r.content)
     xmlpath = get_cache_path("raw", translation, f"{filename}.xml")
+
+    download(zipurl, zippath)
     if not xmlpath.exists():
         logging.info(f"Unpacking {xmlpath.name}")
         with zipfile.ZipFile(zippath) as z:

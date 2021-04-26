@@ -5,8 +5,9 @@ import re
 import requests
 
 from .parser.osis import parse_osis
-from .translit import Hebrew
-from .utils import get_cache_path
+from .translit.greek import transliterate_greek
+from .translit.hebrew import transliterate_hebrew
+from .utils import download, get_cache_path
 
 
 _BOOK_IDS = [
@@ -17,8 +18,6 @@ _BOOK_IDS = [
 
 _HEWLC_ROOT_URL = "https://raw.githubusercontent.com/openscriptures/morphhb/master/wlc"
 _GRTISCH_URL = "https://raw.githubusercontent.com/morphgnt/tischendorf-data/master/OSIS-XML/2.8/tischendorfmorph.OSIS.xml"
-
-_HEB = Hebrew()
 
 
 def fetch_translation_from_openscriptures(translation):
@@ -32,43 +31,30 @@ def fetch_translation_from_openscriptures(translation):
             path = _download_hewlc(book_id)
             records.extend(parse_osis(path, w_tag_parser="hebrew"))
         logging.info("Performing transliteration")
-        _transliterate(records)
+        _transliterate(records, func=transliterate_hebrew)
+
     elif translation == "grtisch":
         path = _download_grtisch()
         records = parse_osis(path, w_tag_parser="greek")
+        _transliterate(records, func=transliterate_greek)
+
     return records
 
 
 def _download_hewlc(book_id):
+    url = f"{_HEWLC_ROOT_URL}/{book_id}.xml"
     path = get_cache_path("raw", "hewlc", f"{book_id.lower()}_osis.xml")
-    if not path.exists():
-        url = f"{_HEWLC_ROOT_URL}/{book_id}.xml"
-        logging.info(f"Requesting {url}")
-        r = requests.get(url)
-        with path.open("wb") as f:
-            f.write(r.content)
+    download(url, path)
     return path
 
 
 def _download_grtisch():
     path = get_cache_path("raw", "grtisch", "grtisch_osis.xml")
-    if not path.exists():
-        url = _GRTISCH_URL
-        logging.info(f"Requesting {url}")
-        r = requests.get(url)
-        with path.open("wb") as f:
-            f.write(r.content)
+    download(_GRTISCH_URL, path)
     return path
 
 
-def _transliterate(records):
+def _transliterate(records, func):
     for record in records:
-        tokens = record["tokens"]
-        for token, next_token in zip(tokens, tokens[1:] + [{"type": "punc"}]):
-            w = _HEB.strip_cantillations(token["text"])
-            if next_token["type"] == "suf":
-                w = w + next_token["text"]
-            if token["type"] == "suf":
-                token["tlit"] = ""
-            else:
-                token["tlit"] = _HEB.transliterate(w)
+        for token in record["tokens"]:
+            token["tlit"] = func(token["text"])
