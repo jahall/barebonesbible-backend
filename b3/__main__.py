@@ -67,8 +67,8 @@ def run_upload(filt):
                 })
     records = list(records.values())
     logging.info(f"Uploading {len(records)} records to dynamodb")
-    if filt or filt.lower() != "all":
-        logging.warning(f"Limiting to {filt} for upload")
+    if filt.lower() != "all":
+        logging.warning(f'Limiting to "{filt}" for upload')
         filt = set(filt.split(","))
         records = [r for r in records if r["chapterId"] in filt or r["chapterId"].split(".")[0] in filt]
     upload(records, table="B3Bibles")
