@@ -1,13 +1,17 @@
 from collections import defaultdict
 import json
 import logging
+from pathlib import Path
 import sys
 
 import click
 
+from b3.books import get_books
+from b3.build import build_api
 from b3.db import upload
 from b3.ebible import fetch_translation_from_ebible
 from b3.openscriptures import fetch_translation_from_openscriptures
+from b3.strongs import fetch_strongs_from_openscriptures
 from b3.utils import get_cache_path
 
 
@@ -73,6 +77,29 @@ def run_upload(filt):
         records = [r for r in records if r["chapterId"] in filt or r["chapterId"].split(".")[0] in filt]
     upload(records, table="B3Bibles")
     logging.info(f"Done")
+
+  
+@cli.command("build-api")
+@click.option("--api-only", is_flag=True)
+def run_build_api(api_only):
+  """
+  Package lambda api.
+  """
+  if not api_only:
+    logging.info("Creating api/resources/strongs.json")
+    record = fetch_strongs_from_openscriptures()
+    resources_dir = Path(__file__).parent.parent / "api" / "resources"
+    resources_dir.mkdir(exist_ok=True)
+    with (resources_dir / "strongs.json").open("w", encoding="utf8") as f:
+      json.dump(record, f)
+
+    logging.info("Creating api/resources/books.json")
+    books = get_books()
+    with (resources_dir / "books.json").open("w", encoding="utf8") as f:
+      json.dump(books, f)
+
+  logging.info("Building build/api.zip")
+  build_api()
 
 
 def _save_to_staging(records, version):

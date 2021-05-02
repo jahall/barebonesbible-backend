@@ -1,101 +1,20 @@
-"""
-This is deployed as a lambda function in AWS.
-"""
-import decimal
-import itertools
-import json
 
-import boto3
-from boto3.dynamodb.conditions import Key
-
-
-print("Loading function")
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("B3Bibles")
-
-
-def lambda_handler(event, context):
+def get_books():
     """
-    Demonstrates a simple HTTP endpoint using API Gateway. You have full
-    access to the request and response payload, including headers and
-    status code.
-
-    To scan a DynamoDB table, make a GET request with the TableName as a
-    query string parameter. To put, update, or delete an item, make a POST,
-    PUT, or DELETE request respectively, passing in the payload to the
-    DynamoDB API as a JSON body.
+    Get books plus metadata.
     """
-    path = event["path"]
-    query = event["queryStringParameters"]
-    print(f"Received path={path} and query={query}")
-
-    resource, *parts = path.strip("/").split("/")
-    if resource != "books":
-        return _response(404, {"message": f"Invalid resource '{resource}'"})
-    
-    # 1. User has requested /books
-    if not parts:
-        return _response(200, _BOOKS_BY_COLLECTION)
-        
-    # 2. User has requested /books/{code}
-    if len(parts) == 1 and parts[0] in _BOOKS:
-        return _response(200, _BOOKS[parts[0]])
-        
-    # 3. User has requested /books/{code}/{start}/{end}
-    if len(parts) == 3 and parts[0] in _BOOKS and is_cv(parts[1]) and is_cv(parts[2]):
-        code = parts[0]
-        c1, v1 = to_cv(parts[1])
-        c2, v2 = to_cv(parts[2])
-        verses = []
-        for c in range(c1, c2 + 1):
-            condition = Key("chapterId").eq(f"{code}.{c}")
-            resp = table.query(KeyConditionExpression=condition)
-            items = resp["Items"]
-            if c == c1:
-                items = [item for item in items if item["verseNum"] >= v1]
-            if c == c2 and v2:
-                items = [item for item in items if item["verseNum"] <= v2]
-            verses.extend(items)
-        result = {
-            "verses": verses,
-        }
-        return _response(200, result)
-    
-    # 4. Failed
-    return _response(404, {"message": f"Invalid path: {path}"})
-    
-    
-def is_cv(cv):
-    cv = cv.split(".")
-    return len(cv) == 2 and cv[0].isdigit() and (cv[1].isdigit() or cv[1] == "x")
-    
-    
-def to_cv(cv):
-    c, v = cv.split(".")
-    c = int(c)
-    v = None if v == "x" else int(v)
-    return c, v
-    
-    
-def _response(code, content):
     return {
-        "statusCode": str(code),
-        "body": json.dumps(content, cls=DecimalEncoder),
-        "headers": {
-            "Access-Control-Allow-Origin" : "*",
-            "Access-Control-Allow-Credentials" : "true",
-            "Content-Type": "application/json",
-        },
+        code: {
+            "collection": collection,
+            "code": code,
+            "name": name,
+            "chapters": chapters,
+            "aliases": [a for a in aliases.split(",")] if aliases else [],
+        }
+        for collection, code, name, chapters, aliases in _BOOKS
     }
-    
-    
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            return int(o)
-        return super().default(o)
-        
-        
+
+
 _BOOKS = [
     ("Torah", "Gen", "Genesis", 50, "Ge,Gn"),
     ("Torah", "Exod", "Exodus", 40, "Ex,Exo"),
@@ -163,25 +82,4 @@ _BOOKS = [
     ("New Testament", "3John", "3 John", 1, "3Jhn,3Joh,3Jn"),
     ("New Testament", "Jude", "Jude", 1, "Jd,Jud"),
     ("New Testament", "Rev", "Revelation", 22, "Re"),
-]
-
-
-_BOOKS = {
-    code: {
-        "collection": collection,
-        "code": code,
-        "name": name,
-        "chapters": chapters,
-        "aliases": [a for a in aliases.split(",")] if aliases else [],
-    }
-    for collection, code, name, chapters, aliases in _BOOKS
-}
-
-
-_BOOKS_BY_COLLECTION = [
-    {
-        "collection": collection,
-        "books": list(group),
-    }
-    for collection, group in itertools.groupby(_BOOKS.values(), key=lambda x: x["collection"])
 ]

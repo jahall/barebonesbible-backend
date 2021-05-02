@@ -1,10 +1,12 @@
 import re
+import unicodedata
 
 
 def transliterate_hebrew(phrase, reverse=False):
     """
     Transliterate to english.
     """
+    phrase = unicodedata.normalize("NFD", phrase)  # ensure chars and accents are separated
     phrase = _strip_cantillations(phrase)
     tlit = "".join([_tlit(clump) for clump in _iter_clumps(phrase)])
     for seq, sub in _TRANSLIT_SUBS:

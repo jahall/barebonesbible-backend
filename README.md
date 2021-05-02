@@ -10,16 +10,18 @@ Do the following:
 3. Install requirements with `pip install -r requirements.txt`
 4. Set environment variables for `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_DEFAULT_REGION` - for access to DynamoDB
 5. Run the following:
-```python
-python b3 stage enasv
-python b3 stage enkjv
-python b3 stage enweb
-python b3 stage enwmb
+```bash
+python b3 stage enasv,enkjv,enweb,enwmb
 python b3 stage hewlc
 python b3 stage grtisch
-#python b3 stage grlxx
 ```
 6. Upload to dynamo db using:
-```python
-python b3 upload
+```bash
+python b3 upload --filt=all
+python b3 upload-books-meta
 ```
+7. Build and package lambda code using:
+```bash
+python b3 build-api
+```
+8. Upload resulting `./build/api.zip` to AWS lambda and deploy
