@@ -77,6 +77,7 @@ def _usfx_to_osis(usfx_id):
         "Amo": "Amos",
         "Oba": "Obad",
         "Jon": "Jonah",
+        "Nam": "Nah",
         "Zep": "Zeph",
         "Zec": "Zech",
         # Ketuvim

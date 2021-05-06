@@ -11,7 +11,7 @@ from b3.build import build_api
 from b3.db import upload
 from b3.ebible import fetch_translation_from_ebible
 from b3.openscriptures import fetch_translation_from_openscriptures
-from b3.strongs import fetch_strongs_from_openscriptures
+from b3.strongs import fetch_strongs_from_openscriptures, get_references
 from b3.utils import get_cache_path
 
 
@@ -42,9 +42,9 @@ def stage(translations):
     logging.info(f"Done")
 
 
-@cli.command("upload")
+@cli.command("upload-bibles")
 @click.option("--filt", default="Gen.1,Gen.2,Ps.1,Matt.1,Matt.2", help="Limit number of records uploaded to dynamodb.")
-def run_upload(filt):
+def run_upload_bibles(filt):
     """
     Upload staged results to dynamodb.
     """
@@ -70,13 +70,31 @@ def run_upload(filt):
                     "tokens": r["tokens"],
                 })
     records = list(records.values())
-    logging.info(f"Uploading {len(records)} records to dynamodb")
+    logging.info(f"Uploading {len(records):,} records to dynamodb")
     if filt.lower() != "all":
         logging.warning(f'Limiting to "{filt}" for upload')
         filt = set(filt.split(","))
         records = [r for r in records if r["chapterId"] in filt or r["chapterId"].split(".")[0] in filt]
     upload(records, table="B3Bibles")
     logging.info(f"Done")
+
+
+@cli.command("upload-search")
+def run_upload_search():
+    """
+    Upload staged results to dynamodb.
+    """
+    records = []
+    for lan in ["hebrew", "greek"]:
+        logging.info(f"Finding strongs search terms for {lan}")
+        refs = get_references(lan)
+        records.extend({"term": sid, "refs": " ".join(_dedup(rlist))} for sid, rlist in refs.items())
+    upload(records, table="B3Search")
+    logging.info(f"Done")
+
+
+def _dedup(refs):
+  return list({ref: None for ref in refs})
 
   
 @cli.command("build-api")

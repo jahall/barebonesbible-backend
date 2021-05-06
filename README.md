@@ -17,8 +17,8 @@ python b3 stage grtisch
 ```
 6. Upload to dynamo db using:
 ```bash
-python b3 upload --filt=all
-python b3 upload-books-meta
+python b3 upload-bibles --filt=all
+python b3 upload-search
 ```
 7. Build and package lambda code using:
 ```bash

@@ -27,6 +27,24 @@ def fetch_strongs_from_openscriptures():
     return record
 
 
+def get_references(lan):
+    """
+    Get strongs references.
+    """
+    translation = {"greek": "grtisch", "hebrew": "hewlc"}[lan]
+    path = get_cache_path("staging", f"{translation}.json")
+    if not path.exists():
+        raise RuntimeError(f"Make sure you've run `python b3 stage {translation}`")
+    references = defaultdict(list)
+    with path.open(encoding="utf8") as f:
+        for record in json.load(f):
+            ref = f"{record['chapterId']}.{record['verseNum']}"
+            for token in record["tokens"]:
+                for id_ in token.get("strongs", []):
+                    references[id_].append(ref)
+    return dict(references)
+
+
 def _download(lan):
     """
     Download js files from openscriptures and hack into simple json files.
@@ -83,22 +101,13 @@ def _add_counts(lan, blob):
     """
     Add reference counts and first occurrences.
     """
-    translation = {"greek": "grtisch", "hebrew": "hewlc"}[lan]
-    path = get_cache_path("staging", f"{translation}.json")
-    if not path.exists():
-        raise RuntimeError(f"Make sure you've run `python b3 stage {translation}`")
-    counts = defaultdict(int)
-    first_refs = defaultdict(list)
-    with path.open(encoding="utf8") as f:
-        for record in json.load(f):
-            ref = f"{record['chapterId']}.{record['verseNum']}"
-            for token in record["tokens"]:
-                for id_ in token.get("strongs", []):
-                    counts[id_] += 1
-                    refs = first_refs[id_]
-                    if len(refs) == 0 or (len(refs) < 5 and refs[-1] != ref):
-                        first_refs[id_].append(ref)
+    refs = get_references(lan)
     for id_, v in blob.items():
-        v["count"] = counts[id_]
-        v["refs"] = first_refs[id_]
+        id_refs = refs.get(id_, [])
+        v["count"] = len(id_refs)
+        v["refs"] = _dedup(id_refs[:100])[:5]
+
+
+def _dedup(refs):
+    return list({ref: None for ref in refs})
 
