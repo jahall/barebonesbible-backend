@@ -123,13 +123,17 @@ def _batch_get_verses(refs):
     """
     Batch get a list of verses...this is actually fairly fast.
     """
-    keys = (ref.rsplit(".", 1) for ref in refs)
-    keys = [{"chapterId": cid, "verseNum": int(vnum)} for cid, vnum in keys]
+    key_pairs = [ref.rsplit(".", 1) for ref in refs]
+    key_pairs = [(cid, int(vnum)) for cid, vnum in key_pairs]
+    keys = [{"chapterId": cid, "verseNum": vnum} for cid, vnum in key_pairs]
     response = dynamodb.batch_get_item(
         RequestItems={"B3Bibles": {"Keys": keys}},
         ReturnConsumedCapacity="TOTAL",
     )
-    return response["Responses"]["B3Bibles"]
+    verses = response["Responses"]["B3Bibles"]
+    # Bleaurgh, need to sort
+    key_to_verse = {(v["chapterId"], v["verseNum"]): v for v in verses}
+    return [key_to_verse[k] for k in key_pairs]
 
 
 def _fetch_verses(parts):
