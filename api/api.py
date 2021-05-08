@@ -83,10 +83,10 @@ def chapter(chapter_id):
 @lru_cache(maxsize=500)
 def references(term):
     """
-    Load chapter from bibles table
+    Load list of refs and ref counts for a term.
     """
     response = search_table.get_item(Key={"term": term})
-    return response["Item"]["refs"].split()
+    return json.loads(response["Item"]["refs"])
 
 
 def _handle_search(query):
@@ -98,17 +98,16 @@ def _handle_search(query):
     book = query.get("book")
     if book:
         result["book"] = book
-        refs = [ref for ref in refs if ref.startswith(book)]
-    nrefs = len(refs)
+        refs = [ref for ref in refs if ref[0].startswith(book)]
+    result["nrefs"] = sum(count for _, count in refs)
+    result["nverses"] = len(refs)
     # Do pagination
     page = int(query.get("page", 1))
     size = int(query.get("size", 0))
     if size:
         refs = refs[(page - 1) * size : page * size]
         result["page"] = page
-        result["pages"] = (nrefs - 0.1) // size + 1
-    else:
-        pages = 1
+        result["pages"] = int((result["nrefs"] - 0.1) // size + 1)
     result["refs"] = refs
     # Fetch verses
     refs_only = strtobool(query.get("refsOnly", "false"))
@@ -123,7 +122,7 @@ def _batch_get_verses(refs):
     """
     Batch get a list of verses...this is actually fairly fast.
     """
-    key_pairs = [ref.rsplit(".", 1) for ref in refs]
+    key_pairs = [ref.rsplit(".", 1) for ref, _ in refs]
     key_pairs = [(cid, int(vnum)) for cid, vnum in key_pairs]
     keys = [{"chapterId": cid, "verseNum": vnum} for cid, vnum in key_pairs]
     response = dynamodb.batch_get_item(

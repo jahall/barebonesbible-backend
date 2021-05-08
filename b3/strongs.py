@@ -29,20 +29,21 @@ def fetch_strongs_from_openscriptures():
 
 def get_references(lan):
     """
-    Get strongs references.
+    Get a mapping from strongs id to list of pairs of (verse ref, count).
     """
     translation = {"greek": "grtisch", "hebrew": "hewlc"}[lan]
     path = get_cache_path("staging", f"{translation}.json")
     if not path.exists():
         raise RuntimeError(f"Make sure you've run `python b3 stage {translation}`")
-    references = defaultdict(list)
+    references = defaultdict(lambda: defaultdict(int))
     with path.open(encoding="utf8") as f:
         for record in json.load(f):
             ref = f"{record['chapterId']}.{record['verseNum']}"
             for token in record["tokens"]:
                 for id_ in token.get("strongs", []):
-                    references[id_].append(ref)
-    return dict(references)
+                    references[id_][ref] += 1
+    references = {id_: list(refs.items()) for id_, refs in references.items()}
+    return references
 
 
 def _download(lan):
@@ -104,10 +105,7 @@ def _add_counts(lan, blob):
     refs = get_references(lan)
     for id_, v in blob.items():
         id_refs = refs.get(id_, [])
-        v["count"] = len(id_refs)
-        v["refs"] = _dedup(id_refs[:100])[:5]
-
-
-def _dedup(refs):
-    return list({ref: None for ref in refs})
+        v["refs"] = [ref for ref, _ in id_refs[:5]]
+        v["nrefs"] = sum(count for _, count in id_refs)
+        v["nverses"] = len(id_refs)
 

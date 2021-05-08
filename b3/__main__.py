@@ -88,13 +88,9 @@ def run_upload_search():
     for lan in ["hebrew", "greek"]:
         logging.info(f"Finding strongs search terms for {lan}")
         refs = get_references(lan)
-        records.extend({"term": sid, "refs": " ".join(_dedup(rlist))} for sid, rlist in refs.items())
+        records.extend({"term": sid, "refs": json.dumps(rlist)} for sid, rlist in refs.items())
     upload(records, table="B3Search")
     logging.info(f"Done")
-
-
-def _dedup(refs):
-  return list({ref: None for ref in refs})
 
   
 @cli.command("build-api")
