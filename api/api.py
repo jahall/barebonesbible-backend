@@ -107,7 +107,7 @@ def _handle_search(query):
     if size:
         refs = refs[(page - 1) * size : page * size]
         result["page"] = page
-        result["pages"] = int((result["nrefs"] - 0.1) // size + 1)
+        result["pages"] = int((result["nverses"] - 0.1) // size + 1)
     result["refs"] = refs
     # Fetch verses
     refs_only = strtobool(query.get("refsOnly", "false"))
