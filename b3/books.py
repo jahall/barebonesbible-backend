@@ -47,7 +47,7 @@ _BOOKS = [
     ("Ketuvim", "Job", "Job", 42, "Jb"),
     ("Ketuvim", "Song", "Song of Songs", 8, "Sos,So,Songs,Song of Solomon"),
     ("Ketuvim", "Ruth", "Ruth", 4, "Rth,Ru"),
-    ("Ketuvim", "Lam", "Lamemntations", 5, "La"),
+    ("Ketuvim", "Lam", "Lamentations", 5, "La"),
     ("Ketuvim", "Eccl", "Ecclesiastes", 12, "Ec,Ecc,Eccle"),
     ("Ketuvim", "Esth", "Esther", 10, "Est,Es"),
     ("Ketuvim", "Dan", "Daniel", 12, "Da,Dn"),

@@ -1,8 +1,4 @@
-import json
 import logging
-import re
-
-import requests
 
 from .parser.osis import parse_osis
 from .translit.greek import transliterate_greek

@@ -1,4 +1,7 @@
+# Main
 boto3
 click
 requests
-spacy
+# Experimental
+betacode
+pygtrie  # clearly a missing dep of betacode
