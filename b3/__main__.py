@@ -10,7 +10,7 @@ from b3.books import get_books
 from b3.build import build_api
 from b3.db import upload
 from b3.ebible import fetch_translation_from_ebible
-from b3.lxx import create_lxx
+#from b3.lxx import create_lxx
 from b3.openscriptures import fetch_translation_from_openscriptures
 from b3.strongs import fetch_strongs_from_openscriptures, get_references
 from b3.utils import get_cache_path
@@ -37,8 +37,8 @@ def stage(translations):
         logging.info(f"STAGING {tr.upper()}")
         if tr in {"hewlc", "grtisch"}:
             records = fetch_translation_from_openscriptures(tr)
-        elif tr in {"grlxx"}:
-            records = create_lxx()
+        #elif tr in {"grlxx"}:
+        #    records = create_lxx()
         else:
             records = fetch_translation_from_ebible(tr)
         _save_to_staging(records, tr)

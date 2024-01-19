@@ -1,11 +1,5 @@
-import json
 import logging
-from pathlib import Path
-import re
-import sys
 import zipfile
-
-import requests
 
 from .parser.usfx import parse_usfx
 from .utils import download, get_cache_path

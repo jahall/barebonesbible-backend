@@ -2,7 +2,6 @@ from collections import defaultdict
 import json
 import logging
 import re
-import unicodedata
 
 from .translit import transliterate_greek, transliterate_hebrew
 from .utils import download, get_cache_path

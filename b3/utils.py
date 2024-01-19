@@ -13,7 +13,7 @@ def download(url, path):
     """
     if not path.exists():
         logging.info(f"Downloading {url}")
-        r = requests.get(url)
+        r = requests.get(url, verify=False)
         with path.open("wb") as f:
             f.write(r.content)
 
