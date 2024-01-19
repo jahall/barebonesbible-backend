@@ -173,9 +173,11 @@ def to_cv(cv):
     
     
 def _response(code, content):
+    body = json.dumps(content, cls=DecimalEncoder)
+    print(f"Status={code} Body={body[:100]}")
     return {
         "statusCode": str(code),
-        "body": json.dumps(content, cls=DecimalEncoder),
+        "body": body,
         "headers": {
             "Access-Control-Allow-Origin" : "*",
             "Access-Control-Allow-Credentials" : "true",
