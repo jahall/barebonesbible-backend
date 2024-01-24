@@ -1,5 +1,8 @@
 import logging
+import warnings
+
 from pathlib import Path
+from urllib3.exceptions import InsecureRequestWarning
 
 import requests
 
@@ -13,7 +16,9 @@ def download(url, path):
     """
     if not path.exists():
         logging.info(f"Downloading {url}")
-        r = requests.get(url, verify=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=InsecureRequestWarning)
+            r = requests.get(url, verify=False)
         with path.open("wb") as f:
             f.write(r.content)
 

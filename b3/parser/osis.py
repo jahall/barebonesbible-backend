@@ -32,7 +32,16 @@ def _tokenize(tree, w_tag_parser, use_kjv_versification):
     """
     tokens = []
     root = None
+    ignore = 0
     for elem in tree.iter():
+        # Ignore everything within a note
+        if ignore:
+            ignore = max(ignore - 1, 0)
+            continue
+        ignore = max(ignore - 1, 0)
+        if elem.tag == "note":
+            ignore = _n_descendents(elem)
+
         # Handle verses
         if elem.tag == "verse" and "osisID" in elem.attrib:
             root = _parse_osis_id(elem.attrib["osisID"])
@@ -135,7 +144,11 @@ def _parse_he_w_tag(text, lemma=None):
         else:
             type_ = "pre"
             strongs = []
-        yield type_, text, strongs
+        yield type_, text, strongs    
+
+
+def _n_descendents(elem):
+    return len(list(elem.iter())) - 1
 
 
 def _parse_osis_id(ref):
