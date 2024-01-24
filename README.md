@@ -16,7 +16,7 @@ python b3 stage enasv,enkjv,enweb,enwmb
 python b3 stage hewlc
 python b3 stage grtisch
 ```
-7. Upload to dynamo db using:
+7. Upload to dynamo db using (takes around 25 mins for all bibles)
 ```bash
 python b3 upload-bibles --filt=all
 python b3 upload-search
