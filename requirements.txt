@@ -1,6 +1,7 @@
 # Main
 boto3
 click
+python-dotenv
 requests
 # Experimental
 betacode

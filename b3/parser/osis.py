@@ -1,8 +1,8 @@
-from itertools import zip_longest
-from pathlib import Path
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
+
+from pathlib import Path
 
 
 def parse_osis(path, w_tag_parser="default", use_kjv_versification=True):
@@ -32,16 +32,8 @@ def _tokenize(tree, w_tag_parser, use_kjv_versification):
     """
     tokens = []
     root = None
-    ignore = 0
+    catch_word = False
     for elem in tree.iter():
-        # Ignore everything within a note
-        if ignore:
-            ignore = max(ignore - 1, 0)
-            continue
-        ignore = max(ignore - 1, 0)
-        if elem.tag == "note":
-            ignore = _n_descendents(elem)
-
         # Handle verses
         if elem.tag == "verse" and "osisID" in elem.attrib:
             root = _parse_osis_id(elem.attrib["osisID"])
@@ -50,37 +42,67 @@ def _tokenize(tree, w_tag_parser, use_kjv_versification):
         elif use_kjv_versification and elem.tag == "note" and (elem.text or "").startswith("KJV:"):
             root = _parse_osis_id(elem.text.replace("KJV:", "").strip("!abcd"))
 
-        # Ignore non-words and segs
+        # Weird situation where a word appears without niqqud and cantillations but it *is*
+        # available within the following <note><catchWord></catchWord><rdg><w></w></rdg></note> tag!
+        if catch_word and elem.tag == "w":
+            rdg_tokens = []
+            _handle_w(rdg_tokens, root, elem, w_tag_parser)
+            for _ in rdg_tokens:
+                tokens.pop()
+            for token in rdg_tokens:
+                tokens.append(token)
+            # assume its a space after this
+            tokens.append({**root, **{"type": "punc", "text": " "}})
+            catch_word = False
+            continue
+
+        catch_word = elem.tag == "rdg"
+
+        # Ignore non-words and non-segs
         if elem.tag not in {"w", "seg"}:
             continue
 
+        # Handle words, segs and tails
         if elem.tag == "w" and elem.text:
-            text = unicodedata.normalize("NFD", elem.text or "")  # ensure chars and accents are separated
-            for type_, text, strongs in w_tag_parser(elem.text, lemma=elem.attrib["lemma"]):
-                tokens.append({**root, **{"type": type_, "text": text, "strongs": strongs}})
+            _handle_w(tokens, root, elem, w_tag_parser)
 
-        elif elem.tag == 'seg':
-            seg = {
-                'x-maqqef': '\u05BE',
-                'x-paseq': '\u05C0',
-                'x-pe': '(\u05E4)',
-                'x-reversednun': '(\u05C6)',  # <- Appears in some Psalms
-                'x-samekh': '(\u05E1)',
-                'x-sof-pasuq': '\u05C3',
-            }[elem.attrib['type']]
-            if tokens[-1]["type"] == "punc":
-                tokens[-1]["text"] += seg
-            else:
-                tokens.append({**root, **{"type": "punc", "text": seg}})
+        elif elem.tag == "seg":
+            _handle_seg(tokens, root, elem)
     
         if elem.tail:
-            tail = elem.tail.replace("\n", " ")
-            tail = re.sub(r"\s+", " ", tail)
-            if tokens[-1]["type"] == "punc":
-                tokens[-1]["text"] += tail
-            else:
-                tokens.append({**root, **{"type": "punc", "text": tail}})
+            _handle_tail(tokens, root, elem)
+
     return tokens
+
+
+def _handle_w(tokens, root, elem, w_tag_parser):
+    text = unicodedata.normalize("NFD", elem.text or "")  # ensure chars and accents are separated
+    for type_, text, strongs in w_tag_parser(elem.text, lemma=elem.attrib["lemma"]):
+        tokens.append({**root, **{"type": type_, "text": text, "strongs": strongs}})
+
+
+def _handle_seg(tokens, root, elem):
+    seg = {
+        'x-maqqef': '\u05BE',
+        'x-paseq': '\u05C0',
+        'x-pe': '(\u05E4)',
+        'x-reversednun': '(\u05C6)',  # <- Appears in some Psalms
+        'x-samekh': '(\u05E1)',
+        'x-sof-pasuq': '\u05C3',
+    }[elem.attrib['type']]
+    if tokens[-1]["type"] == "punc":
+        tokens[-1]["text"] += seg
+    else:
+        tokens.append({**root, **{"type": "punc", "text": seg}})
+
+
+def _handle_tail(tokens, root, elem):
+    tail = elem.tail.replace("\n", " ")
+    tail = re.sub(r"\s+", " ", tail)
+    if tokens[-1]["type"] == "punc":
+        tokens[-1]["text"] += tail
+    else:
+        tokens.append({**root, **{"type": "punc", "text": tail}})
 
 
 def _group_tokens(tokens):
@@ -144,11 +166,7 @@ def _parse_he_w_tag(text, lemma=None):
         else:
             type_ = "pre"
             strongs = []
-        yield type_, text, strongs    
-
-
-def _n_descendents(elem):
-    return len(list(elem.iter())) - 1
+        yield type_, text, strongs
 
 
 def _parse_osis_id(ref):

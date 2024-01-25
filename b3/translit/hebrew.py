@@ -105,7 +105,6 @@ _CANTILLATIONS = {
     "zinor": "\u05AE",
     "masora-circle": "\u05AF",
 }
-_NIQQUD_RE = re.compile("[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]")
 _NIQQUD = {
     "sheva": "\u05B0",
     "hataf-segol": "\u05B1",
@@ -128,14 +127,12 @@ _NIQQUD = {
     "lower-dot": "\u05C5",
     #"qamats-qatan": "\u05C7",  # <- Not used
 }
-_PUNCTUATION_RE = re.compile("[\u05BE\u05C0\u05C3\u05C6]")
 _PUNCTUATION = {
     "maqaf": "\u05BE",
     "paseq": "\u05C0",
     "sof-pasuq": "\u05C3",
     "nun-hafukha": "\u05C6",
 }
-_SPLIT_RE = re.compile("([^\u0591-\u05AF\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA]+)")
 _CHARS = {
     "aleph": "\u05D0",
     "bet": "\u05D1",
