@@ -129,9 +129,10 @@ def _append_token(record, line):
     # no strongs ref so just return
     if not strongs:
         record["tokens"].append({"text": " ".join(phrase), "type": "o"})
+        return
 
     # exclude non-important words in the highlighting
-    if len(phrase) > 1 and phrase[0] in _NON_IMPORTANT:
+    while len(phrase) > 1 and phrase[0] in _GREEK_CRUFT:
         record["tokens"].append({"text": phrase[0] + " ", "type": "o"})
         phrase = phrase[1:]
     record["tokens"].append({"text": " ".join(phrase), "type": "w", "strongs": strongs})
@@ -153,8 +154,7 @@ def _to_greek(word: str) -> str:
     return greek
 
 
-_NON_IMPORTANT = {"εν", "και", "ται", "τον", "το", "ο"}
-
+_GREEK_CRUFT = {"εν", "και", "ται", "τη", "την", "τον", "το", "ο"}
 
 _TO_GREEK = {
     "A": "\u03B1",  # alpha
