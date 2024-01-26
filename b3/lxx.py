@@ -102,6 +102,8 @@ def _append_token(record, line):
 
 def _to_greek(word: str) -> str:
     greek = ""
+    if word.startswith("{") or word.startswith("["):
+        return greek
     upper = False
     for char in word:
         if char == "*":
@@ -140,5 +142,5 @@ _TO_GREEK = {
     "X": "\u03C7",  # chi
     "Y": "\u03C8",  # psi
     "W": "\u03C9",  # omega
-    "V": "\u03DC",  # digamma?!
+    "V": "\u03DD",  # digamma (archaic!)
 }

@@ -54,7 +54,7 @@ def run_upload_bibles(filt):
     """
     dotenv.load_dotenv()
     records = {}
-    for version in ["enasv", "enkjv", "enweb", "enwmb", "hewlc", "grtisch"]:
+    for version in ["enasv", "enkjv", "enweb", "enwmb", "hewlc", "grlxx", "grtisch"]:
         logging.info(f"Loading {version.upper()} from staging")
         path = get_cache_path("staging", f"{version}.json")
         if not path.exists():

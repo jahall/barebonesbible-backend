@@ -13,10 +13,8 @@ def parse_osis(path, w_tag_parser="default", use_kjv_versification=True):
     - chapterId: the OSIS ID for a chapter
     - verseNum: verse number
     - tokens: list of json-ified tokens with the following schema:
-        - chapterId: (see above)
-        - verseNum: (see above)
         - text: the token text
-        - type: the token type ("w", "pre" or "punc")
+        - type: the token type ("w", "o", "pre" or "punc")
         - strongs: (optional) strongs reference
     """
     with Path(path).open("r", encoding="utf8") as f:
