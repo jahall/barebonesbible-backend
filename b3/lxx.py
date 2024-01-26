@@ -1,3 +1,5 @@
+import re
+
 from .utils import download, get_cache_path
 
 
@@ -49,13 +51,12 @@ _FILES = {
 
 
 def create_lxx():
-    """
-    Create LXX stuff.
-    """
+    """Create LXX stuff."""
     records = []
     for code, fname in _FILES.items():
         path = _download(fname)
         records.extend(_parse(code, path))
+    return records
 
 
 def _download(fname):
@@ -68,22 +69,76 @@ def _download(fname):
 def _parse(code, path):
     with path.open() as f:
         record = None
-        brk = True
         for line in f:
-            if line.strip() == "":
-                brk = True
+            # ignore empty lines
+            line = line.strip()
+            if line == "":
                 continue
-            if brk:
-                if record: yield record
-                cv = line.strip().split()[-1].split(":")
+
+            # start new verse
+            if re.match(r".*\s+\d+:\d+$", line) or line.startswith("Obad"):
+                if record and record["tokens"]:
+                    yield record
+                cv = line.split()[-1].split(":")
                 c = 1 if len(cv) == 1 else cv[0]
                 v = cv[0] if len(cv) == 1 else cv[1]
-                try:
-                    record = {"chapterId": f"{code}.{c}", "verseNum": int(v), "tokens": []}
-                finally:
-                    print(line)
-                brk = False
-                continue
-            record["tokens"].append(line.strip().split("\t"))
-        if record: yield record
+                record = {"chapterId": f"{code}.{c}", "verseNum": int(v), "tokens": []}
 
+            # append greek
+            else:
+                _append_token(record, line)
+    
+        if record and record["tokens"]:
+            yield record
+
+
+def _append_token(record, line):
+    for word in line.split("\t")[-1].split():
+        root = {"chapterId": record["chapterId"], "verseNum": record["verseNum"]}
+        greek = _to_greek(word)
+        if greek:
+            record["tokens"].append({**root, **{"text": greek + " ", "type": "o"}})
+
+
+def _to_greek(word: str) -> str:
+    greek = ""
+    upper = False
+    for char in word:
+        if char == "*":
+            upper = True
+        else:
+            char = _TO_GREEK.get(char)
+            if char:
+                greek += char.upper() if upper else char
+            upper = False
+    return greek
+
+
+_TO_GREEK = {
+    "A": "\u03B1",  # alpha
+    "B": "\u03B2",  # beta
+    "G": "\u03B3",  # gamma
+    "D": "\u03B4",  # delta
+    "E": "\u03B5",  # epsilon
+    "Z": "\u03B6",  # zeta
+    "H": "\u03B7",  # eta
+    "Q": "\u03B8",  # theta
+    "I": "\u03B9",  # iota
+    "K": "\u03BA",  # kappa
+    "L": "\u03BB",  # lambda
+    "M": "\u03BC",  # mu
+    "N": "\u03BD",  # nu
+    "C": "\u03BE",  # xi
+    "O": "\u03BF",  # omicron
+    "P": "\u03C0",  # pi
+    "R": "\u03C1",  # rho
+    "J": "\u03C2",  # sigma (final)
+    "S": "\u03C3",  # sigma
+    "T": "\u03C4",  # tau
+    "U": "\u03C5",  # upsilon
+    "F": "\u03C6",  # phi
+    "X": "\u03C7",  # chi
+    "Y": "\u03C8",  # psi
+    "W": "\u03C9",  # omega
+    "V": "\u03DC",  # digamma?!
+}

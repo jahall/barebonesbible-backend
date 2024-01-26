@@ -6,8 +6,18 @@ from pathlib import Path
 
 
 def parse_osis(path, w_tag_parser="default", use_kjv_versification=True):
-    """
-    Parse the OSIS xml file into a list of json-ified verses.
+    """Parse the OSIS xml file into a list of json-ified verses.
+
+    Each verse element will have the following schema:
+
+    - chapterId: the OSIS ID for a chapter
+    - verseNum: verse number
+    - tokens: list of json-ified tokens with the following schema:
+        - chapterId: (see above)
+        - verseNum: (see above)
+        - text: the token text
+        - type: the token type ("w", "pre" or "punc")
+        - strongs: (optional) strongs reference
     """
     with Path(path).open("r", encoding="utf8") as f:
         xmlstr = f.read()
@@ -23,11 +33,12 @@ def parse_osis(path, w_tag_parser="default", use_kjv_versification=True):
 
 
 def _tokenize(tree, w_tag_parser, use_kjv_versification):
-    """
-    Make a list of verses with the following schema:
-    - chapter_osis_id: the OSIS ID for a chapter
-    - verse: verse number
-    - token: the token
+    """Make a list of verses with the following schema:
+
+    - chapterId: the OSIS ID for a chapter
+    - verseNum: verse number
+    - text: the token text
+    - type: the token type ("w", "pre" or "punc")
     - strongs: (optional) strongs reference
     """
     tokens = []
@@ -75,6 +86,11 @@ def _tokenize(tree, w_tag_parser, use_kjv_versification):
     return tokens
 
 
+def _parse_osis_id(ref):
+    cid, vnum = ref.rsplit('.', 1)
+    return {"chapterId": cid, "verseNum": int(vnum)}
+
+
 def _handle_w(tokens, root, elem, w_tag_parser):
     text = unicodedata.normalize("NFD", elem.text or "")  # ensure chars and accents are separated
     for type_, text, strongs in w_tag_parser(elem.text, lemma=elem.attrib["lemma"]):
@@ -106,9 +122,7 @@ def _handle_tail(tokens, root, elem):
 
 
 def _group_tokens(tokens):
-    """
-    Group tokens by verse.
-    """
+    """Group tokens by verse."""
     prev_vid = None
     buffer = []
     for x in tokens:
@@ -126,8 +140,7 @@ def _parse_default_w_tag(text, lemma=None):
 
 
 def _parse_gr_w_tag(text, lemma=None):
-    """
-    For example:
+    """For example:
     
         <w lemma="strong:G976 lemma:βίβλος" morph="robinson:N-NSF">Βίβλος</w>
 
@@ -144,8 +157,7 @@ def _parse_gr_w_tag(text, lemma=None):
 
 
 def _parse_he_w_tag(text, lemma=None):
-    """
-    For example:
+    """For example:
     
         <w lemma="c/8659" n="1" morph="HC/Np/Sh" id="13GzE">וְ/תַרְשִׁ֑ישָׁ/ה</w>
 
@@ -167,11 +179,6 @@ def _parse_he_w_tag(text, lemma=None):
             type_ = "pre"
             strongs = []
         yield type_, text, strongs
-
-
-def _parse_osis_id(ref):
-    cid, vnum = ref.rsplit('.', 1)
-    return {"chapterId": cid, "verseNum": int(vnum)}
 
 
 _W_TAG_PARSERS = {

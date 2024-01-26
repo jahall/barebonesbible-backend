@@ -6,9 +6,7 @@ from pathlib import Path
 
 
 def parse_usfx(path):
-    """
-    Parse mental USFX format to big list of tokenized verses.
-    """
+    """Parse mental USFX format to big list of tokenized verses."""
     with Path(path).open("r", encoding="utf8") as f:
         xmlstr = f.read()
         xmlstr = re.sub(r" xmlns=['\"][^'\"]+['\"]", "", xmlstr, count=1)
@@ -29,9 +27,7 @@ def parse_usfx(path):
     
     
 def _iter_tokens(tree):
-    """
-    Iterate over every token in every verse.
-    """
+    """Iterate over every token in every verse."""
     vid = None
     for e in tree.iter():  # iterates recursively through the doc
         # Handle verse count
@@ -59,9 +55,7 @@ def _extract_verse_id(e):
 
 
 def _usfx_to_osis(usfx_id):
-    """
-    Normalize book refs to OSIS.
-    """
+    """Normalize book refs to OSIS."""
     return {
         # Torah
         "Exo": "Exod",
