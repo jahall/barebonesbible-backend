@@ -1,5 +1,11 @@
+import json
+import logging
 import re
+import unicodedata
 
+from functools import lru_cache
+
+from .translit import transliterate_greek
 from .utils import download, get_cache_path
 
 
@@ -51,11 +57,17 @@ _FILES = {
 
 
 def create_lxx():
-    """Create LXX stuff."""
+    """Create LXX records."""
     records = []
     for code, fname in _FILES.items():
+        logging.info(f"Working on {code}")
         path = _download(fname)
         records.extend(_parse(code, path))
+
+    logging.info("Performing transliteration")
+    for record in records:
+        for token in record["tokens"]:
+            token["tlit"] = transliterate_greek(token["text"])
     return records
 
 
@@ -85,7 +97,7 @@ def _parse(code, path):
                 record = {"chapterId": f"{code}.{c}", "verseNum": int(v), "tokens": []}
 
             # append greek
-            else:
+            elif "\t" in line:
                 _append_token(record, line)
     
         if record and record["tokens"]:
@@ -93,11 +105,36 @@ def _parse(code, path):
 
 
 def _append_token(record, line):
-    for word in line.split("\t")[-1].split():
-        root = {"chapterId": record["chapterId"], "verseNum": record["verseNum"]}
-        greek = _to_greek(word)
-        if greek:
-            record["tokens"].append({**root, **{"text": greek + " ", "type": "o"}})
+    # 1. Split hebrew and greek
+    hebrew_repr, greek_repr = line.split("\t")[:2]
+
+    # 2. Map the hebrew to strongs refs
+    prefix = record["chapterId"], record["verseNum"]
+    strongs = []
+    for word in hebrew_repr.split():
+        word = word.split("/")[-1]
+        word = "".join(c for c in word if c in _VALID_HEBREW_REPRS)
+        for ref in strongs_map().get(prefix + (word,), []):
+            if ref not in strongs:
+                strongs.append(ref)
+
+    # 3. Decode the greek
+    phrase = (_to_greek(word) for word in greek_repr.split())
+    phrase = [word for word in phrase if word]
+    if not phrase:
+        return
+    if record["tokens"]:
+        record["tokens"].append({"text": " ", "type": "punc"})
+
+    # no strongs ref so just return
+    if not strongs:
+        record["tokens"].append({"text": " ".join(phrase), "type": "o"})
+
+    # exclude non-important words in the highlighting
+    if len(phrase) > 1 and phrase[0] in _NON_IMPORTANT:
+        record["tokens"].append({"text": phrase[0] + " ", "type": "o"})
+        phrase = phrase[1:]
+    record["tokens"].append({"text": " ".join(phrase), "type": "w", "strongs": strongs})
 
 
 def _to_greek(word: str) -> str:
@@ -114,6 +151,9 @@ def _to_greek(word: str) -> str:
                 greek += char.upper() if upper else char
             upper = False
     return greek
+
+
+_NON_IMPORTANT = {"εν", "και", "ται", "τον", "το", "ο"}
 
 
 _TO_GREEK = {
@@ -144,3 +184,66 @@ _TO_GREEK = {
     "W": "\u03C9",  # omega
     "V": "\u03DD",  # digamma (archaic!)
 }
+
+
+@lru_cache(maxsize=1)
+def strongs_map():
+    """Mapping from (chapter, verse, word-repr) -> list of strongs refs."""
+    path = get_cache_path("staging", "hewlc.json")
+    if not path.exists():
+        raise ValueError("We need to stage `hewlc` before we can do `grlxx`")
+    
+    strongs = {}
+    with path.open(encoding="utf8") as f:
+        for verse in json.load(f):
+            prefix = verse["chapterId"], verse["verseNum"]
+            for token in verse["tokens"]:
+                if token["type"] == "w":
+                    word = _to_hebrew_tlit(token["text"])
+                    if word not in _IGNORE:
+                        strongs[prefix + (word,)] = token["strongs"]
+    return strongs
+                
+                
+def _to_hebrew_tlit(word: str) -> str:
+    word = unicodedata.normalize("NFD", word)  # ensure chars and accents are separated
+    return "".join(_TO_HEBREW_REPR.get(char, "") for char in word)
+
+
+_IGNORE = {"E)N", ")T"}
+
+
+_TO_HEBREW_REPR = {
+    # main chars
+    "\u05D0": ")",
+    "\u05D1": "B",
+    "\u05D2": "G",
+    "\u05D3": "D",
+    "\u05D4": "H",
+    "\u05D5": "W",
+    "\u05D6": "Z",
+    "\u05D7": "X",
+    "\u05D8": "+",
+    "\u05D9": "Y",
+    "\u05DA": "K",  # final
+    "\u05DB": "K",
+    "\u05DC": "L",
+    "\u05DD": "M",  # final
+    "\u05DE": "M",
+    "\u05DF": "N",  # final
+    "\u05E0": "N",
+    "\u05E1": "S",
+    "\u05E2": "(",
+    "\u05E3": "P",  # final
+    "\u05E4": "P",
+    "\u05E5": "C",  # final
+    "\u05E6": "C",
+    "\u05E7": "Q",
+    "\u05E8": "R",
+    # "\u05E9": "#",  <- only need the relevant dot below
+    "\u05C1": "$",  # shin-dot
+    "\u05C2": "&",  # sin-dot
+    "\u05EA": "T",
+}
+
+_VALID_HEBREW_REPRS = set(_TO_HEBREW_REPR.values())

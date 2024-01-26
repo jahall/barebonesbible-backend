@@ -23,16 +23,12 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=fmt)
 
 @click.group()
 def cli():
-    """
-    Main click group.
-    """
+    """Main click group."""
 
 @cli.command("stage")
 @click.argument("translations")
 def stage(translations):
-    """
-    Parse USFX file from ebibles.com.
-    """
+    """Parse USFX file from ebibles.com."""
     translations = translations.lower().split(",")
     for tr in translations:
         logging.info(f"STAGING {tr.upper()}")
@@ -49,17 +45,17 @@ def stage(translations):
 @cli.command("upload-bibles")
 @click.option("--filt", default="Gen.1,Gen.2,Ps.1,Matt.1,Matt.2", help="Limit number of records uploaded to dynamodb.")
 def run_upload_bibles(filt):
-    """
-    Upload staged results to dynamodb.
-    """
+    """Upload staged results to dynamodb."""
     dotenv.load_dotenv()
     records = {}
     for version in ["enasv", "enkjv", "enweb", "enwmb", "hewlc", "grlxx", "grtisch"]:
+
         logging.info(f"Loading {version.upper()} from staging")
         path = get_cache_path("staging", f"{version}.json")
         if not path.exists():
             logging.warning(f"Ignoring {version} since {path} does not exist.")
             continue
+
         with path.open(encoding="utf8") as f:
             for r in json.load(f):
                 key = r["chapterId"], r["verseNum"]
@@ -75,6 +71,7 @@ def run_upload_bibles(filt):
                     "tokens": r["tokens"],
                 })
     records = list(records.values())
+    
     logging.info(f"Uploading {len(records):,} records to dynamodb")
     if filt.lower() != "all":
         logging.warning(f'Limiting to "{filt}" for upload')
