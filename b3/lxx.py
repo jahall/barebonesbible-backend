@@ -79,9 +79,9 @@ def _parse(code, path):
                 c = 1 if len(cv) == 1 else cv[0]
                 v = cv[0] if len(cv) == 1 else cv[1]
                 try:
-                  record = {"chapterId": f"{code}.{c}", "verseNum": int(v), "tokens": []}
+                    record = {"chapterId": f"{code}.{c}", "verseNum": int(v), "tokens": []}
                 finally:
-                  print(line)
+                    print(line)
                 brk = False
                 continue
             record["tokens"].append(line.strip().split("\t"))
