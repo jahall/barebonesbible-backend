@@ -39,7 +39,7 @@ def _iter_tokens(tree):
         if vid and e.tag in {"w"}:
             token = {"type": "w", "text": e.text}
             if "s" in e.attrib:
-                token["strongs"] = e.attrib["s"].split()
+                token["strongs"] = _extract_strongs(e.attrib["s"])
             yield vid, token
         if vid and e.tag in {"p", "q", "qs"} and e.text:
             yield vid, {"type": "o", "text": e.text.replace("\n", " ")}
@@ -52,6 +52,17 @@ def _extract_verse_id(e):
     cid = f"{_usfx_to_osis(bookid)}.{cnum}"
     vnum = int(vnum)
     return cid, vnum
+
+
+def _extract_strongs(tag):
+    """Split strongs refs and remove any zero-padding!
+    
+    For example: "H123 H012" -> ["H123", "H12"]
+    """
+    return [
+        re.sub(r"([HG])0+(\d+)", "\g<1>\g<2>", ref)
+        for ref in tag.split()
+    ]
 
 
 def _usfx_to_osis(usfx_id):
