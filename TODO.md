@@ -2,7 +2,6 @@
 ## User Bugs
 * Auto-close nav-bar
 * Having to double click on books
-* Missing Strongs popup for e.g. KJV Gen 1:2 "void" - its zero-padded!!
 
 ## Dev
 * [DONE] Use `python-dotenv`
